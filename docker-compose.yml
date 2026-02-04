@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # PostgreSQL + PostGIS Database
+  database:
+    build:
+      context: .
+      dockerfile: database/Dockerfile
+    container_name: env_data_database
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-environmental_data}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Phenology_data:/data/phenology_data:ro
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    networks:
+      - env_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-environmental_data}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Streamlit Dashboard
+  dashboard:
+    build:
+      context: ./dashboard
+      dockerfile: Dockerfile
+    container_name: env_data_dashboard
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-environmental_data}
+    ports:
+      - "${DASHBOARD_PORT:-8501}:8501"
+    depends_on:
+      database:
+        condition: service_healthy
+    networks:
+      - env_network
+    restart: unless-stopped
+
+networks:
+  env_network:
+    driver: bridge
+    name: environmental_data_network
+
+volumes:
+  postgres_data:
+    name: env_data_postgres
