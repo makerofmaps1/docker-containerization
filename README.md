@@ -29,7 +29,7 @@ This project demonstrates a **containerized data visualization platform** for an
 - Health checks and service dependencies
 - Environment-based configuration
 
-**Use Case:** Interactive visualization of flower observation data from the Issaqueena Forest, allowing users to explore phenological patterns through an intuitive web interface with cascading filters and coordinated visualizations.
+**Use Case:** Interactive visualization of flowering observation data, allowing users to explore phenological patterns through an intuitive web interface with cascading filters and coordinated visualizations.
 
 ## 🏗️ Architecture
 
@@ -209,7 +209,7 @@ docker-compose restart        # Restart services
 1. **Clone the repository:**
 ```bash
 git clone <repository-url>
-cd docker_container
+cd docker-containerization
 ```
 
 2. **Configure environment (optional):**
@@ -370,7 +370,7 @@ Enables fast proximity queries like "find flowers within 1km of a point" (not us
 ## 📁 Project Structure
 
 ```
-docker_container/
+docker-containerization/
 │
 ├── docker-compose.yml          # Container orchestration
 ├── .env.example               # Environment template
@@ -406,7 +406,7 @@ Ecological Informatics, Volume 39, 2017, Pages 123-129, ISSN 1574-9541,
 https://doi.org/10.1016/j.ecoinf.2017.04.007
 
 **Dataset:**
-- Flower observations from Issaqueena Forest
+- Flower observations
 - Multiple years of phenological data
 - Taxonomic information (family, species)
 - Geographic coordinates
