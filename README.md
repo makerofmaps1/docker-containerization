@@ -1,6 +1,6 @@
-# Phenology Data Visualization Dashboard - Docker Containerization Demo
+# Docker Containerization Demo - Phenology Data Visualization Dashboard
 
-A production-ready, multi-container application demonstrating Docker orchestration, PostgreSQL/PostGIS spatial databases, and interactive data visualization with Streamlit. This project serves as a comprehensive reference for Docker containerization best practices and multi-tier application architecture.
+A production-ready, multi-container application demonstrating Docker orchestration, PostgreSQL/PostGIS spatial databases, and interactive data visualization with Streamlit. This project serves as my reference for Docker containerization best practices and multi-tier application architecture.
 
 ![Docker](https://img.shields.io/badge/Docker-2496ED?style=flat&logo=docker&logoColor=white)
 ![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)
