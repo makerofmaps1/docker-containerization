@@ -1,5 +1,10 @@
+# key file
+*.pem
+docker/tunnel/key.pem
+
 # Environment files
 .env
+.env.local
 
 # Python
 __pycache__/

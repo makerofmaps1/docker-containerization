@@ -139,8 +139,8 @@ HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
 
 PostgreSQL's Docker image automatically runs scripts in this directory on **first startup**:
 
-1. `01-init.sql` - Creates tables, indexes, and PostGIS extensions
-2. `02-load_data.sh` - Executes Python script to load CSV data
+1. `02-load_data.sh` - Executes Python script to load Excel data (local or S3)
+2. `dashboard/load_data.py` - Uses SQLAlchemy ORM to create schema and insert data
 
 **Execution Order:** Alphabetical by filename
 
@@ -249,13 +249,107 @@ docker-compose down
 docker-compose down -v
 ```
 
+## ☁️ Cloud Deployment (S3 + RDS/Supabase + AWS EC2)
+
+This setup uses S3 for the raw Excel file, a managed PostgreSQL/PostGIS database (RDS or Supabase), and an EC2 instance to host the Streamlit app.
+
+### 1. Managed PostgreSQL (RDS or Supabase)
+
+1. Create a Supabase project and copy the connection string (Database Settings → Connection string).
+2. Enable PostGIS in the Supabase SQL editor:
+```sql
+create extension if not exists postgis;
+create extension if not exists postgis_topology;
+```
+3. Set your connection string in an environment variable:
+```bash
+export DATABASE_URL="postgresql+psycopg2://user:password@host:5432/dbname?sslmode=require"
+```
+
+### 1b. SSH Tunnel Through EC2 (for private RDS)
+
+If your RDS instance is private, use the provided `db-tunnel` service to forward a local port to RDS through an EC2 bastion host.
+
+**Network requirements:**
+- EC2 security group: inbound SSH (22) from your IP
+- RDS security group: inbound 5432 from the EC2 security group
+- EC2 outbound: allow 5432 to RDS
+
+**Required environment variables (local or .env):**
+```bash
+# Dashboard connects to the tunnel container
+DB_HOST=db-tunnel
+DB_PORT=5432
+DB_NAME=environmental_data
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+# Tunnel connects to RDS via EC2
+EC2_HOST=ec2-x-x-x-x.compute-1.amazonaws.com
+SSH_USER=ec2-user
+RDS_HOST=your-rds-endpoint.amazonaws.com
+RDS_PORT=5432
+```
+
+**SSH key:**
+- Place your private key at `docker/tunnel/key.pem` (or change the bind mount in [docker-compose.yml](docker-compose.yml)).
+- The container mounts it read-only at `/secrets/key.pem`.
+
+**Start services:**
+```bash
+docker-compose up -d
+```
+
+**Notes:**
+- The dashboard connects to `db-tunnel:5432`, which forwards to RDS.
+- If you use Secrets Manager, make sure the secret resolves to `host=db-tunnel` or set all `DB_*` env vars so they take precedence.
+- Check tunnel logs with `docker-compose logs -f db-tunnel` if the connection fails.
+
+### 2. Load Data from S3 Using SQLAlchemy ORM
+
+The data loader now uses a SQLAlchemy ORM model and will create the table if it does not exist.
+
+```bash
+export DATABASE_URL="postgresql+psycopg2://user:password@host:5432/dbname?sslmode=require"
+export S3_BUCKET="your-bucket"
+export S3_KEY="raw-data/data.xlsx"
+export AWS_REGION="us-east-1"
+export AWS_SECRET_NAME="DEMO_DB_CREDS"  # optional: Secrets Manager secret name
+python dashboard/load_data.py
+```
+
+Alternatively run the loader as a one-off container (recommended for CI/EC2):
+
+```bash
+# Using cloud compose
+docker compose -f docker-compose.cloud.yml run --rm loader
+
+# Using local compose (loads to local DB unless DATABASE_URL points to RDS)
+docker compose run --rm loader
+```
+
+### 3. Host Streamlit on AWS EC2
+
+1. Create an EC2 instance (t3.micro works for free tier) and open inbound port 8501 in the security group.
+2. Install Docker and Docker Compose on the instance.
+3. Clone this repo and set the Supabase connection string in your environment or [.env](.env).
+4. Start the dashboard container only:
+
+```bash
+docker compose -f docker-compose.cloud.yml up -d
+```
+
+Open `http://<ec2-public-ip>:8501` in your browser.
+
+**Tip:** Use [docker-compose.cloud.yml](docker-compose.cloud.yml) so the app connects to Supabase without running the local database container.
+
 ### First Startup
 
 On first startup, the database container will:
 1. Initialize PostgreSQL cluster
 2. Create database and PostGIS extensions
-3. Run `init.sql` to create schema
-4. Execute `load_data.py` to import phenology data
+3. Use SQLAlchemy ORM to create schema
+4. Execute `dashboard/load_data.py` to import phenology data
 5. This takes ~30-60 seconds
 
 Subsequent startups are instant (data persists in volume).
@@ -381,19 +475,21 @@ docker-containerization/
 │
 ├── database/                  # Database Container
 │   ├── Dockerfile            # PostgreSQL + PostGIS + Python
-│   ├── init.sql              # Schema creation (runs first)
 │   ├── 02-load_data.sh       # Data loading orchestration
-│   └── load_data.py          # Python data loader
 │
 ├── dashboard/                 # Streamlit Container
-│   ├── Dockerfile            # Python + Streamlit
-│   ├── requirements.txt      # Python dependencies
+│   ├── __init__.py           # Package marker
 │   ├── app.py               # Home page
+│   ├── models.py            # Database models
+│   ├── load_data.py         # ORM-based data loader
+│   ├── data.xlsx            # Phenology dataset
+│   ├── Dockerfile           # Python + Streamlit
+│   ├── requirements.txt     # Python dependencies
 │   └── pages/
 │       └── 1_🌸_Phenology_Analysis.py  # Main visualization
 │
-└── Phenology_data/           # Source Data (bind mount)
-    └── All_Clean_Combined.csv
+└── Phenology_data/           # Source Data (optional)
+  └── All_Clean_Combined.csv
 ```
 
 ## 📊 Data Source
