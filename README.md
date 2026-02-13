@@ -343,6 +343,38 @@ Open `http://<ec2-public-ip>:8501` in your browser.
 
 **Tip:** Use [docker-compose.cloud.yml](docker-compose.cloud.yml) so the app connects to Supabase without running the local database container.
 
+### 4. IAM Role for S3 Access (Recommended)
+
+For production deployments, use IAM roles instead of access keys for S3 access.
+
+**EC2 Instance Profile:**
+1. Create an IAM role with this policy:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::cope-s3-demo-bucket",
+        "arn:aws:s3:::cope-s3-demo-bucket/*"
+      ]
+    }
+  ]
+}
+```
+
+2. Attach the role to your EC2 instance (EC2 Console → Instance → Actions → Security → Modify IAM role)
+
+3. The container will automatically use the instance role - **no AWS credentials needed** in environment variables
+
+**GitHub Actions Deployment:**
+The [.github/workflows/deploy.yml](.github/workflows/deploy.yml) workflow does NOT pass `AWS_ACCESS_KEY_ID` or `AWS_SECRET_ACCESS_KEY` to the container, relying on the EC2 instance role instead.
+
 ### First Startup
 
 On first startup, the database container will:

@@ -60,7 +60,7 @@ jobs:
           # Pull latest image
           docker pull ${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:latest
           
-          # Run new container
+          # Run new container (uses EC2 instance IAM role for S3 access)
           docker run -d \
             --name phenology-dashboard \
             -p 8501:8501 \
@@ -70,8 +70,6 @@ jobs:
             -e DB_NAME=${{ secrets.DB_NAME }} \
             -e DB_USER=${{ secrets.DB_USER }} \
             -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
-            -e AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }} \
-            -e AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }} \
             -e AWS_REGION=${{ secrets.AWS_REGION }} \
             -e S3_BUCKET=${{ secrets.S3_BUCKET }} \
             -e S3_KEY=${{ secrets.S3_KEY }} \
